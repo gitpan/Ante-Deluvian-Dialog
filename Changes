@@ -1,0 +1,6 @@
+Revision history for Perl extension Ante::Deluvian::Dialog.
+
+0.01  Mon Jan 26 15:19:32 2009
+	- original version; created by h2xs 1.23 with options
+		-AX --skip-exporter --use-new-tests -n Ante::Deluvian::Dialog -v 0.01
+

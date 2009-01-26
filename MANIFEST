@@ -1,0 +1,6 @@
+Changes
+Makefile.PL
+MANIFEST
+README
+t/Ante-Deluvian-Dialog.t
+lib/Ante/Deluvian/Dialog.pm
