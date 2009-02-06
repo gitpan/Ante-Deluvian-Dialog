@@ -6,8 +6,7 @@ use Term::ReadKey;
 use Text::Wrap qw($columns wrap);
 use IO::File;
 
-our $VERSION = '0.01';
-
+our $VERSION = 0.02;
 sub FALSE { return 0; }
 sub TRUE  { return 1; }
 my $_isWin = FALSE;
@@ -29,6 +28,7 @@ sub new {
   $self->{'cols'} = 80;
   $self->{'stat'} = 0;
   $self->{'from'} = 1;
+  $self->{'eoln'} = "";
   $self->{'curpid'}   = $$,
   $self->{'getdrv'}   = \&_procDfCmd,
   $self->{'usable'}   = 25;
@@ -84,11 +84,12 @@ sub _getWinSize {
   my ($maxCol, $maxRow);
   
   if ($_isWin) {
-    use Win32::Console;
+    require Win32::Console;
     my $cns = new Win32::Console();
     my @info =$cns->Info();
     ($maxCol, $maxRow) = $cns->MaxWindow();
     $self->{'gdrv'} = \&_procNetUse;
+    $self->{'eoln'} = "\n";
   }
   else {
     ($maxCol, $maxRow) = GetTerminalSize();
@@ -154,8 +155,6 @@ sub _doselection {
   
   my $j = int($inpt / $self->{'usable'}) + 1;
   my $k = int($inpt % $self->{'usable'}) + $self->{'from'};
-  # my $j = int($inpt / $self->{'usable'});
-  # my $k = int($inpt % $self->{'usable'});
   print "_doselection (..., $inpt, $mode)   j = $j   k = $k ...\n";
   if ($mode eq "single") {
     if (defined($rsel->[0])) {
@@ -205,7 +204,7 @@ sub _doselection {
       $self->_doselection(
               selary => $rsel,
               pagary => $rpag,
-              input  => $elm,
+              input  => $elm - 1,
               selmod => "select",
       );
     }
@@ -215,7 +214,7 @@ sub _doselection {
       $self->_doselection(
               selary => $rsel,
               pagary => $rpag,
-              input  => $elm,
+              input  => $elm - 1,
               selmod => "discard",
       );
       $rsel->[0] = undef;
@@ -239,8 +238,8 @@ sub _getDrives {
     $pattern = "\\A\\w+\\s+([A-Z]:)\\s+(\\\\\\\\\\S+)";
   }
   else {
-    $cmd = "df";
-    $pattern = "%s+(\/\\S*)";
+    $cmd = "df | awk '{ print \$NF }'";
+    $pattern = "%\\s+(\/\\S*)\\z";
   }
   open(SYST, "$cmd |");
   while ($line = <SYST>) {
@@ -263,10 +262,16 @@ sub _getDrives {
   }
   @drvlst = sort(@drvlst);
   $drv = $self->listbox(\@drvlst, select => "atonce", prompt => "Please select a drive or partition:");
-  if ($drv =~ /\A([A-Z]:\/)\s+/) {
+  if ($_isWin && ($drv =~ /\A([A-Z]:\/)\s+/)) {
     $drv = $1;
   }
-  print "Selected drive: $drv ...\n";
+  elsif ($drv =~ /\A(\/\S*)/) {
+    $drv = $1;
+  }
+  else {
+    $drv = undef;
+  }
+  # print "Selected drive: $drv ...\n";
   return($drv);
 }
 
@@ -287,7 +292,7 @@ sub printscreen {
     $prompt = pop(@lines);
   }
   foreach my $line (@lines) {
-    print "$line\n";
+    print "$line" . $self->{'eoln'};
   }
   if (defined($prompt)) {
     print "$prompt ";
